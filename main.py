@@ -19,7 +19,7 @@ game_over = 0
 # load images
 sun_img = pygame.image.load('nebo.jpg')
 bg_img = pygame.image.load('sun.jpg')
-restart_img = pygame.image.load('img/restart_btn.png')
+restart_img = pygame.image.load('prevedenie.png')
 
 class Button():
     def __init__(self, x, y, image):
@@ -143,14 +143,28 @@ class Player():
 
             return game_over
 
-
-
-
-
-
-
-
-
+    def reset(self, x, y):
+        self.images_right = []
+        self.images_left = []
+        self.index = 0
+        self.counter = 0
+        for num in range(1, 5):
+            img_right = pygame.image.load(f'img/guy{num}.png')
+            img_right = pygame.transform.scale(img_right, (40, 80))
+            img_left = pygame.transform.flip(img_right, True, False)
+            self.images_right.append(img_right)
+            self.images_left.append(img_left)
+        self.dead_image = pygame.image.load('img/ghost.png')
+        self.image = self.images_right[self.index]
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+        self.width = self.image.get_width()
+        self.height = self.image.get_height()
+        self.vel_y = 0
+        self.jumped = False
+        self.direction = 0
+        self.in_air = True
 
 
 class World():
@@ -186,11 +200,13 @@ class World():
                     lava = Lava(col_count * tile_size, row_count * tile_size + (tile_size // 2))
                     lava_group.add(lava)
 
-
+                col_count += 1
+            row_count += 1
 
     def draw(self):
         for tile in self.tile_list:
             screen.blit(tile[0], tile[1])
+
 
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
@@ -208,7 +224,6 @@ class Enemy(pygame.sprite.Sprite):
         if abs(self.move_counter) > 50:
             self.move_direction *= -1
             self.move_counter *= -1
-        pygame.draw.rect(screen, white, self.rect)
 
 
 class Lava(pygame.sprite.Sprite):
@@ -219,7 +234,6 @@ class Lava(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
-
 
 
 world_data = [
@@ -249,8 +263,11 @@ world_data = [
 player = Player(100, screen_height - 130)
 
 blob_group = pygame.sprite.Group()
+lava_group = pygame.sprite.Group()
 
 world = World(world_data)
+
+restart_button = Button(screen_width // 2 - 50, screen_height // 2 + 100, restart_img)
 
 run = True
 while run:
@@ -269,6 +286,11 @@ while run:
     lava_group.draw(screen)
 
     game_over = player.update(game_over)
+
+    if game_over == -1:
+        if restart_button.draw():
+            player.reset(100, screen_height - 130)
+            game_over = 0
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
