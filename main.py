@@ -1,5 +1,7 @@
 import pygame
 from pygame.locals import *
+import pickle
+from os import path
 
 pygame.init()
 
@@ -15,11 +17,14 @@ pygame.display.set_caption('Begalka')
 # define game variables
 tile_size = 50
 game_over = 0
+main_menu = True
 
 # load images
 sun_img = pygame.image.load('nebo.jpg')
 bg_img = pygame.image.load('sun.jpg')
 restart_img = pygame.image.load('prevedenie.png')
+start_img = pygame.image.load('img/start_btn.png')
+exit_img = pygame.image.load('img/exit_btn.png')
 
 class Button():
     def __init__(self, x, y, image):
@@ -206,6 +211,7 @@ class World():
     def draw(self):
         for tile in self.tile_list:
             screen.blit(tile[0], tile[1])
+            pygame.draw.rect(screen, (255, 255, 255), tile[1], 2)
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -268,6 +274,9 @@ lava_group = pygame.sprite.Group()
 world = World(world_data)
 
 restart_button = Button(screen_width // 2 - 50, screen_height // 2 + 100, restart_img)
+start_button = Button(screen_width // 2 - 350, screen_height // 2, start_img)
+exit_button = Button(screen_width // 2 + 150, screen_height // 2, exit_img)
+
 
 run = True
 while run:
@@ -277,13 +286,21 @@ while run:
     screen.blit(bg_img, (0, 0))
     screen.blit(sun_img, (100, 100))
 
-    world.draw()
+    if main_menu == True:
+        if exit_button.draw():
+            run = False
+        if start_button.draw():
+            main_menu = False
+    else:
+        world.draw()
+
 
     if game_over == 0:
         blob_group.update()
 
     blob_group.draw(screen)
     lava_group.draw(screen)
+
 
     game_over = player.update(game_over)
 
