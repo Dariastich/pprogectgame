@@ -16,7 +16,7 @@ screen_width = 1000
 screen_height = 1000
 
 screen = pygame.display.set_mode((screen_width, screen_height))
-pygame.display.set_caption('Begalka')
+pygame.display.set_caption('RunStimulator')
 
 font = pygame.font.SysFont('Bauhaus 93', 70)
 font_score = pygame.font.SysFont('Bauhaus 93', 30)
@@ -59,6 +59,8 @@ def draw_text(text, font, text_col, x, y):
 def reset_level(level):
     player.reset(100, screen_height - 130)
     blob_group.empty()
+    platform_group.empty()
+    coin_group.empty()
     lava_group.empty()
     exit_group.empty()
 
@@ -67,6 +69,9 @@ def reset_level(level):
         pickle_in = open(f'level{level}_data', 'rb')
         world_data = pickle.load(pickle_in)
     world = World(world_data)
+    # create dummy coin for showing the score
+    score_coin = Coin(tile_size // 2, tile_size // 2)
+    coin_group.add(score_coin)
 
     return world
 
@@ -109,6 +114,7 @@ class Player():
         dx = 0
         dy = 0
         walk_cooldown = 5
+        col_thresh = 20
 
         if game_over == 0:
             # get keypresses
@@ -173,14 +179,17 @@ class Player():
             # check for collision with enemies
             if pygame.sprite.spritecollide(self, blob_group, False):
                 game_over = -1
+                game_over_fx.play()
 
             # check for collision with lava
             if pygame.sprite.spritecollide(self, lava_group, False):
                 game_over = -1
+                game_over_fx.play()
 
                 # check for collision with exit
             if pygame.sprite.spritecollide(self, exit_group, False):
                 game_over = 1
+
 
                 # check for collision with platforms
                 for platform in platform_group:
@@ -203,7 +212,7 @@ class Player():
                             self.rect.x += platform.move_direction
 
 
-                # update player coordinates
+           # update player coordinates
             self.rect.x += dx
             self.rect.y += dy
 
@@ -219,27 +228,27 @@ class Player():
         return game_over
 
     def reset(self, x, y):
-        self.images_right = []
-        self.images_left = []
-        self.index = 0
-        self.counter = 0
-        for num in range(1, 5):
-            img_right = pygame.image.load('geroi.png')
-            img_right = pygame.transform.scale(img_right, (40, 80))
-            img_left = pygame.transform.flip(img_right, True, False)
-            self.images_right.append(img_right)
-            self.images_left.append(img_left)
-        self.dead_image = pygame.image.load('prevedenie.png')
-        self.image = self.images_right[self.index]
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
-        self.width = self.image.get_width()
-        self.height = self.image.get_height()
-        self.vel_y = 0
-        self.jumped = False
-        self.direction = 0
-        self.in_air = True
+            self.images_right = []
+            self.images_left = []
+            self.index = 0
+            self.counter = 0
+            for num in range(1, 5):
+                img_right = pygame.image.load('geroi.png')
+                img_right = pygame.transform.scale(img_right, (40, 80))
+                img_left = pygame.transform.flip(img_right, True, False)
+                self.images_right.append(img_right)
+                self.images_left.append(img_left)
+            self.dead_image = pygame.image.load('prevedenie.png')
+            self.image = self.images_right[self.index]
+            self.rect = self.image.get_rect()
+            self.rect.x = x
+            self.rect.y = y
+            self.width = self.image.get_width()
+            self.height = self.image.get_height()
+            self.vel_y = 0
+            self.jumped = False
+            self.direction = 0
+            self.in_air = True
 
 
 class World():
@@ -336,15 +345,6 @@ class Platform(pygame.sprite.Sprite):
             self.move_counter *= -1
 
 
-class Coin(pygame.sprite.Sprite):
-    def __init__(self, x, y):
-        pygame.sprite.Sprite.__init__(self)
-        img = pygame.image.load('img/coin.png')
-        self.image = pygame.transform.scale(img, (tile_size // 2, tile_size // 2))
-        self.rect = self.image.get_rect()
-        self.rect.center = (x, y)
-
-
 class Lava(pygame.sprite.Sprite):
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
@@ -367,13 +367,11 @@ class Coin(pygame.sprite.Sprite):
 class Exit(pygame.sprite.Sprite):
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
-        img = pygame.image.load('img/exit.png')
+        img = pygame.image.load('exit.jpg')
         self.image = pygame.transform.scale(img, (tile_size, int(tile_size * 1.5)))
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
-
-
 
 
 player = Player(100, screen_height - 130)
@@ -391,8 +389,6 @@ coin_group.add(score_coin)
 if path.exists(f'level{level}_data'):
     pickle_in = open(f'level{level}_data', 'rb')
     world_data = pickle.load(pickle_in)
-
-    
 world = World(world_data)
 
 restart_button = Button(screen_width // 2 - 50, screen_height // 2 + 100, restart_img)
