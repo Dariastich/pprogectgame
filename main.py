@@ -4,24 +4,33 @@ from pygame import mixer
 import pickle
 from os import path
 
+#начальные вещи
 pygame.mixer.pre_init(44100, -16, 2, 512)
 mixer.init()
-
 pygame.init()
 
+
+#часы
 clock = pygame.time.Clock()
 fps = 60
 
+
+#настройки экрана
 screen_width = 1000
 screen_height = 1000
 
+
+#название экрана исоздание экрана
 screen = pygame.display.set_mode((screen_width, screen_height))
 pygame.display.set_caption('RunStimulator')
 
+
+#шрифты
 font = pygame.font.SysFont('Bauhaus 93', 70)
 font_score = pygame.font.SysFont('Bauhaus 93', 30)
 
-# define game variables
+
+#константы
 tile_size = 50
 game_over = 0
 main_menu = True
@@ -29,17 +38,20 @@ level = 1
 max_levels = 7
 score = 0
 
+
+#цвета
 white = (255, 255, 255)
 blue = (0, 0, 255)
 
-# load images
+
+#загрузка изображений
 sun_img = pygame.image.load('nebo.jpg')
 bg_img = pygame.image.load('sun.jpg')
 restart_img = pygame.image.load('prevedenie.png')
 start_img = pygame.image.load('run.jpg')
 exit_img = pygame.image.load('exit.jpg')
 
-#load sounds
+#загрузка звуков
 pygame.mixer.music.load('fon.wav')
 pygame.mixer.music.play(-1, 0.0, 5000)
 coin_fx = pygame.mixer.Sound('coins.wav')
@@ -49,13 +61,13 @@ jump_fx.set_volume(0.5)
 game_over_fx = pygame.mixer.Sound('fatality.wav')
 game_over_fx.set_volume(0.5)
 
-
+#написание текста
 def draw_text(text, font, text_col, x, y):
     img = font.render(text, True, text_col)
     screen.blit(img, (x, y))
 
 
-#function to reset level
+#просчет сколько уровней осталось игрока до конца игры
 def reset_level(level):
     player.reset(100, screen_height - 130)
     blob_group.empty()
@@ -64,18 +76,20 @@ def reset_level(level):
     lava_group.empty()
     exit_group.empty()
 
-    #load in level data and create world
+    #загрузка уровней
     if path.exists(f'level{level}_data'):
         pickle_in = open(f'level{level}_data', 'rb')
         world_data = pickle.load(pickle_in)
     world = World(world_data)
-    # create dummy coin for showing the score
+
+    #создание подсчета монет
     score_coin = Coin(tile_size // 2, tile_size // 2)
     coin_group.add(score_coin)
 
     return world
 
 
+#класс кнопок и нажатий
 class Button():
     def __init__(self, x, y, image):
         self.image = image
@@ -84,13 +98,14 @@ class Button():
         self.rect.y = y
         self.clicked = False
 
+#отрисовка
     def draw(self):
         action = False
 
-        #get mouse position
+        #позиция мышки
         pos = pygame.mouse.get_pos()
 
-        #check mouseover and clicked conditions
+        #что нажато проверка
         if self.rect.collidepoint(pos):
             if pygame.mouse.get_pressed()[0] == 1 and self.clicked == False:
                 action = True
@@ -100,24 +115,27 @@ class Button():
             self.clicked = False
 
 
-        #draw button
+        #отрисовка кнопки
         screen.blit(self.image, self.rect)
 
         return action
 
-
+#
 class Player():
     def __init__(self, x, y):
         self.reset(x, y)
 
+#счет игрока и то что происходит
     def update(self, game_over):
         dx = 0
         dy = 0
         walk_cooldown = 5
         col_thresh = 20
 
+
+#цикл проверки зажатия
         if game_over == 0:
-            # get keypresses
+            # зажатие кнопок
             key = pygame.key.get_pressed()
             if key[pygame.K_SPACE] and self.jumped == False and self.in_air == False:
                 jump_fx.play()
@@ -141,7 +159,7 @@ class Player():
                 if self.direction == -1:
                     self.image = self.images_left[self.index]
 
-                # handle animation
+            # преодаление препятствий
             if self.counter > walk_cooldown:
                 self.counter = 0
                 self.index += 1
@@ -152,67 +170,67 @@ class Player():
                 if self.direction == -1:
                     self.image = self.images_left[self.index]
 
-            # add gravity
+            # гравитация в игре( учитывание падения в лаву)
             self.vel_y += 1
             if self.vel_y > 10:
                 self.vel_y = 10
             dy += self.vel_y
 
-            # check for collision
+            # избежание столкновений и их просчет
             self.in_air = True
             for tile in world.tile_list:
-                # check for collision in x direction
+                # проверка в координате х
                 if tile[1].colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
                     dx = 0
-                # check for collision in y direction
+                # проверка в координате у
                 if tile[1].colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
-                    # check if below the ground i.e. jumping
+                    # проверка при прыжке
                     if self.vel_y < 0:
                         dy = tile[1].bottom - self.rect.top
                         self.vel_y = 0
-                    # check if above the ground i.e. falling
+                    # проверка на падение в связке с гравитацией
                     elif self.vel_y >= 0:
                         dy = tile[1].top - self.rect.bottom
                         self.vel_y = 0
                         self.in_air = False
 
-            # check for collision with enemies
+            # столкновение с препятствиями
             if pygame.sprite.spritecollide(self, blob_group, False):
                 game_over = -1
                 game_over_fx.play()
 
-            # check for collision with lava
+            # падение в лаву
             if pygame.sprite.spritecollide(self, lava_group, False):
                 game_over = -1
                 game_over_fx.play()
 
-                # check for collision with exit
+            # нахождение на выход
             if pygame.sprite.spritecollide(self, exit_group, False):
                 game_over = 1
 
 
-                # check for collision with platforms
+                # столкновение с платформой
                 for platform in platform_group:
-                    # collision in the x direction
+                    # координата х
                     if platform.rect.colliderect(self.rect.x + dx, self.rect.y, self.width, self.height):
                         dx = 0
-                    # collision in the y direction
+                    # координата у
                     if platform.rect.colliderect(self.rect.x, self.rect.y + dy, self.width, self.height):
-                        # check if below platform
+                        # платформа ниже
                         if abs((self.rect.top + dy) - platform.rect.bottom) < col_thresh:
                             self.vel_y = 0
                             dy = platform.rect.bottom - self.rect.top
-                        # check if above platform
+                        # платформа выше
                         elif abs((self.rect.bottom + dy) - platform.rect.top) < col_thresh:
                             self.rect.bottom = platform.rect.top - 1
                             self.in_air = False
                             dy = 0
-                        # move sideways with the platform
+                        # в одной высоте с платформой
                         if platform.move_x != 0:
                             self.rect.x += platform.move_direction
 
 
-           # update player coordinates
+           # обновление координат
             self.rect.x += dx
             self.rect.y += dy
 
@@ -222,11 +240,11 @@ class Player():
             if self.rect.y > 200:
                 self.rect.y -= 5
 
-        # draw player onto screen
+        # персонаж вне
         screen.blit(self.image, self.rect)
 
         return game_over
-
+#движение героя, смерть
     def reset(self, x, y):
             self.images_right = []
             self.images_left = []
@@ -251,18 +269,21 @@ class Player():
             self.in_air = True
 
 
+#
 class World():
     def __init__(self, data):
         self.tile_list = []
 
-        # load images
+        # загрузка изображений
         dirt_img = pygame.image.load('ramka.jpg')
         grass_img = pygame.image.load('prep.jpg')
 
+#обработка файла
         row_count = 0
         for row in data:
             col_count = 0
             for tile in row:
+                #соотношение уровня и картинок
                 if tile == 1:
                     img = pygame.transform.scale(dirt_img, (tile_size, tile_size))
                     img_rect = img.get_rect()
@@ -298,13 +319,13 @@ class World():
 
                 col_count += 1
             row_count += 1
-
+#открисовка
     def draw(self):
         for tile in self.tile_list:
             screen.blit(tile[0], tile[1])
 
 
-
+#монстрики
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
@@ -314,7 +335,7 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.y = y
         self.move_direction = 1
         self.move_counter = 0
-
+#обновление
     def update(self):
         self.rect.x += self.move_direction
         self.move_counter += 1
@@ -322,7 +343,7 @@ class Enemy(pygame.sprite.Sprite):
             self.move_direction *= -1
             self.move_counter *= -1
 
-
+#платорма
 class Platform(pygame.sprite.Sprite):
     def __init__(self, x, y, move_x, move_y):
         pygame.sprite.Sprite.__init__(self)
@@ -335,7 +356,7 @@ class Platform(pygame.sprite.Sprite):
         self.move_direction = 1
         self.move_x = move_x
         self.move_y = move_y
-
+#обновление
     def update(self):
         self.rect.x += self.move_direction * self.move_x
         self.rect.y += self.move_direction * self.move_y
@@ -344,7 +365,7 @@ class Platform(pygame.sprite.Sprite):
             self.move_direction *= -1
             self.move_counter *= -1
 
-
+#лава
 class Lava(pygame.sprite.Sprite):
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
@@ -354,7 +375,7 @@ class Lava(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
 
-
+#монетки
 class Coin(pygame.sprite.Sprite):
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
@@ -363,7 +384,7 @@ class Coin(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
 
-
+#выход
 class Exit(pygame.sprite.Sprite):
     def __init__(self, x, y):
         pygame.sprite.Sprite.__init__(self)
@@ -373,9 +394,10 @@ class Exit(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
 
-
+#игрок
 player = Player(100, screen_height - 130)
 
+#запуск классов
 blob_group = pygame.sprite.Group()
 platform_group = pygame.sprite.Group()
 lava_group = pygame.sprite.Group()
@@ -385,17 +407,18 @@ exit_group = pygame.sprite.Group()
 score_coin = Coin(tile_size // 2, tile_size // 2)
 coin_group.add(score_coin)
 
-
+#переключение уровней
 if path.exists(f'level{level}_data'):
     pickle_in = open(f'level{level}_data', 'rb')
     world_data = pickle.load(pickle_in)
 world = World(world_data)
 
+#кнопки
 restart_button = Button(screen_width // 2 - 50, screen_height // 2 + 100, restart_img)
 start_button = Button(screen_width // 2 - 350, screen_height // 2, start_img)
 exit_button = Button(screen_width // 2 + 150, screen_height // 2, exit_img)
 
-
+#цикл работы программы
 run = True
 while run:
 
